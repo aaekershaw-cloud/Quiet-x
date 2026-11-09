@@ -69,6 +69,24 @@ Backup: export/import everything as JSON, including your allowlist.
 - Works in any Chromium browser (Edge, Brave, Arc). For Firefox the manifest needs a
   `browser_specific_settings` block.
 
+## Tests
+
+```
+npm install -g jsdom
+NODE_PATH="$(npm root -g)" node tests/test.js
+NODE_PATH="$(npm root -g)" node tests/import-test.js
+node tests/background-test.js
+```
+
+Install jsdom globally, not in this folder: `node_modules` contains files whose names
+start with `_`, which Chrome reserves, and it will refuse to load the extension.
+
+- `test.js` — filtering decisions against synthetic X markup: allowlist, replies and
+  self-threads, reposts credited to the reposter, muted words, ads, topic tabs, the sidebar
+  and search, and which pages are filtered. Each leak fixed since 1.0 has a regression test.
+- `import-test.js` — the following-list sync: handle detection across layouts, the scraper.
+- `background-test.js` — the service worker's post-reload tab refresh.
+
 ## Changelog
 
 ### 1.1.0 — leak fixes
@@ -189,3 +207,14 @@ Backup: export/import everything as JSON, including your allowlist.
   element Quiet X is hiding with where it sits on screen, and the contents of the top bar.
   The leak report only counts pages that are actually being filtered — on a profile page,
   which is never filtered, visible posts are correct, not leaks.
+
+### 1.5.3 — reload from the toolbar
+
+- **Reload extension** button in the toolbar popup, so picking up new code no longer means
+  a trip to `chrome://extensions`. Reloading orphans the copy already running in open X
+  tabs, so those tabs are refreshed automatically once the extension is back — otherwise
+  they would keep running the old code until refreshed by hand. A request older than a
+  minute is discarded, so an unrelated startup never refreshes tabs unprompted.
+- The popup shows the running version, so you can confirm a reload took.
+- Tests use repo-relative paths and run from a checkout; the README's Tests section, lost
+  in an earlier update, is restored.

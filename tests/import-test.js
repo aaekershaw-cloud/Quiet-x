@@ -1,12 +1,12 @@
 /* Tests the pieces that run inside the page during a following-list sync:
    handle detection across X's layouts, and the scraper. */
 const fs = require('fs');
-const { JSDOM, VirtualConsole } = require('/home/claude/node_modules/jsdom');
+const { JSDOM, VirtualConsole } = require('jsdom');
 /* jsdom has no scrolling; its "not implemented" notices are noise here */
 const quiet = new VirtualConsole();
 quiet.on('jsdomError', () => {});
 
-const src = fs.readFileSync('/home/claude/quietx/src/background.js', 'utf8');
+const src = fs.readFileSync(require('path').join(__dirname, '..', 'src', 'background.js'), 'utf8');
 function extract(name) {
   const start = src.indexOf('function ' + name + '(');
   if (start < 0) throw new Error('not found: ' + name);

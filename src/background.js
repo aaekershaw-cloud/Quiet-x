@@ -2,6 +2,21 @@
 importScripts('defaults.js');
 const Q = globalThis.QX;
 
+/* Runs every time the service worker starts. After a reload requested from the
+   popup, refresh open X tabs so they run the new content script instead of the
+   orphaned old one. Stale notes (over a minute old) are discarded, so an
+   unrelated later startup never refreshes your tabs out of the blue. */
+async function reloadXTabsIfPending() {
+  const { pendingTabReload } = await chrome.storage.local.get('pendingTabReload');
+  if (!pendingTabReload) return 0;
+  await chrome.storage.local.remove('pendingTabReload');
+  if (Date.now() - pendingTabReload > 60000) return 0;
+  const tabs = await chrome.tabs.query({ url: ['https://x.com/*', 'https://twitter.com/*'] });
+  for (const t of tabs) await chrome.tabs.reload(t.id).catch(() => {});
+  return tabs.length;
+}
+reloadXTabsIfPending();
+
 chrome.runtime.onInstalled.addListener(async (details) => {
   const cur = await chrome.storage.local.get(['settings', 'migrations']);
   if (!cur.settings) {

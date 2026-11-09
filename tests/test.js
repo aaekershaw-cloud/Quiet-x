@@ -1,5 +1,5 @@
 const fs = require('fs');
-const { JSDOM } = require('/home/claude/node_modules/jsdom');
+const { JSDOM } = require('jsdom');
 
 const dom = new JSDOM('<!doctype html><html><body></body></html>', { url: 'https://x.com/home' });
 global.window = dom.window;
@@ -14,7 +14,7 @@ global.chrome = {
 };
 global.globalThis.__QX_TEST__ = true;
 
-const base = '/home/claude/quietx/src';
+const base = require('path').join(__dirname, '..', 'src');
 eval(fs.readFileSync(base + '/defaults.js', 'utf8'));
 eval(fs.readFileSync(base + '/content/content.js', 'utf8'));
 const qx = globalThis.__qx;

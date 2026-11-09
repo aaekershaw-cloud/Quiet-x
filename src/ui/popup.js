@@ -77,7 +77,17 @@ async function main() {
   bind();
   render();
 
+  $('#ver').textContent = 'v' + chrome.runtime.getManifest().version;
   $('#settings').onclick = () => chrome.runtime.openOptionsPage();
+
+  /* Chrome never watches an unpacked extension's files, so new code only loads on a
+     reload. Reloading also orphans the copy already running in open X tabs, so leave
+     a note for the service worker to refresh those tabs once it is back up. */
+  $('#reload').onclick = async () => {
+    $('#reload').textContent = 'Reloading…';
+    await chrome.storage.local.set({ pendingTabReload: Date.now() });
+    chrome.runtime.reload();
+  };
   $('#override').onclick = async () => {
     await chrome.storage.local.set({ bypassUntil: Date.now() + (S.bypassMinutes || 5) * 60000 });
     toast('Filtering paused for ' + (S.bypassMinutes || 5) + ' min');
