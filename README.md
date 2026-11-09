@@ -163,3 +163,12 @@ Backup: export/import everything as JSON, including your allowlist.
   opening a profile or a post, so a search shows every result — including accounts you have
   not allowed. This no longer depends on the scope setting either. There is a toggle if you
   do want results filtered to your allowlist.
+
+### 1.5.1 — search is un-hideable
+
+- X moves the search box depending on window width: right sidebar on a wide window, top
+  bar on a narrow one. 1.5.0 only protected it in the sidebar. The rule is now general —
+  after every sweep, the search box's ancestors are stripped of this extension's hide
+  marks, so nothing it hides can contain search, wherever X has put it.
+- Diagnostics now reports where the search box is, whether it is visible, and if not,
+  which element is hiding it and why.

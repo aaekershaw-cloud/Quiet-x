@@ -66,7 +66,7 @@ html[data-qx-badges="1"] [data-testid="AppTabBar_DirectMessage_Link"] div[dir] >
 
 /* The search box lives inside the right sidebar, so hiding the column outright
    takes search with it. Hide the sidebar's other modules and keep search. */
-html[data-qx-sidebar="1"] [data-testid="sidebarColumn"][data-qx-sidebar-mode="all"] { display: none !important; }
+html[data-qx-sidebar="1"] [data-testid="sidebarColumn"][data-qx-sidebar-mode="all"]:not([data-qx-keep-search="1"]) { display: none !important; }
 html[data-qx-sidebar="1"] [data-testid="sidebarColumn"] [data-qx-hide="1"] { display: none !important; }
 html[data-qx-sidebar="1"] [data-testid="primaryColumn"] { border-right: 0 !important; }
 
@@ -82,8 +82,8 @@ html[data-qx-spaces="1"] [data-testid="placementTracking"]:has([data-testid="aud
 html[data-qx-spaces="1"] [data-testid="pill-contents-container"],
 html[data-qx-spaces="1"] section[aria-label*="Spaces"] { display: none !important; }
 
-html[data-qx-explore="1"] [data-testid="AppTabBar_Explore_Link"],
-html[data-qx-explore="1"] a[href="/explore"] { display: none !important; }
+html[data-qx-explore="1"] [data-testid="AppTabBar_Explore_Link"]:not([data-qx-keep-search="1"]),
+html[data-qx-explore="1"] a[href="/explore"]:not([data-qx-keep-search="1"]) { display: none !important; }
 html[data-qx-grok="1"] a[href^="/i/grok"],
 html[data-qx-grok="1"] [data-testid="AppTabBar_Grok_Link"] { display: none !important; }
 html[data-qx-dm="1"] [data-testid="DMDrawer"] { display: none !important; }
@@ -132,10 +132,10 @@ html[data-qx-minimal="1"] div[data-testid="cellInnerDiv"] { border-bottom-color:
 html[data-qx-stop="1"] div[data-testid="cellInnerDiv"]:has(article[data-testid="tweet"]) { display: none !important; }
 
 /* ---------- ads & promoted content, anywhere on the site ---------- */
-html[data-qx-ads="1"] [data-qx-ad="1"] { display: none !important; }
+html[data-qx-ads="1"] [data-qx-ad="1"]:not([data-qx-keep-search="1"]) { display: none !important; }
 html[data-qx-ads="1"] div[data-testid="cellInnerDiv"]:has([data-testid="placementTracking"]) { display: none !important; }
 html[data-qx-ads="1"] [data-testid="placementTracking"] { display: none !important; }
 
 /* ---------- followed topics / extra timeline tabs ---------- */
-html[data-qx-topics="1"] [data-qx-topic="1"] { display: none !important; }
+html[data-qx-topics="1"] [data-qx-topic="1"]:not([data-qx-keep-search="1"]) { display: none !important; }
 html[data-qx-tabbar="1"] [data-testid="primaryColumn"] [role="tablist"] { display: none !important; }

@@ -352,6 +352,7 @@
       markAds();
       markTopicModules();
       trimSidebar();
+      protectSearch();
       handleTabs();
       injectProfileButton();
     }
@@ -387,6 +388,37 @@
       }
       node.removeAttribute('data-qx-hide');
       node = parent;
+    }
+  }
+
+  /* Search moves around: in the right sidebar on a wide window, up into the top bar
+     on a narrow one. Rather than knowing where it is, make it un-hideable — nothing
+     this extension hides may contain it. Runs after every other sweep. */
+  const SEARCH_SELECTORS = [
+    '[data-testid="SearchBox_Search_Input"]',
+    '[data-testid="searchIconButton"]',
+    '[role="search"]',
+    'form[action="/search"]',
+    'a[href^="/explore"][aria-label*="Search" i]',
+    '[aria-label="Search and explore"]',
+    '[data-testid="ExploreTimelines_SearchBox"]'
+  ].join(', ');
+
+  function protectSearch() {
+    let boxes;
+    try { boxes = document.querySelectorAll(SEARCH_SELECTORS); } catch (e) { return; }
+    for (const box of boxes) {
+      let n = box;
+      while (n && n !== document.documentElement) {
+        n.removeAttribute('data-qx-hide');
+        n.removeAttribute('data-qx-topic');
+        n.removeAttribute('data-qx-ad');
+        if (n.getAttribute('data-qx-sidebar-mode') === 'all') {
+          n.setAttribute('data-qx-sidebar-mode', 'keep-search');
+        }
+        n.setAttribute('data-qx-keep-search', '1');
+        n = n.parentElement;
+      }
     }
   }
 
@@ -855,7 +887,7 @@
 
   if (globalThis.__QX_TEST__) {
     globalThis.__qx = {
-      decide, authorHandle, isReply, isRepost, isQuote, isPromoted, replyTargets, route, statusId, filterActive, markAds, markTopicModules, handleTabs, hasAdLabel, trimSidebar, reposterHandle, allowReplyContext, entryFor,
+      decide, authorHandle, isReply, isRepost, isQuote, isPromoted, replyTargets, route, statusId, filterActive, markAds, markTopicModules, handleTabs, hasAdLabel, trimSidebar, protectSearch, reposterHandle, allowReplyContext, entryFor,
       setS: (s, own) => { S = s; ownHandle = own || null; }
     };
   } else {

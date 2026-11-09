@@ -246,6 +246,7 @@ async function main() {
         'allowlist size: ' + res.allowlistSize,
         'authors unreadable: ' + res.unresolved,
         'cell→article depth: ' + JSON.stringify(res.cellToArticleDepth),
+        'search box: ' + JSON.stringify(res.search),
         '',
         'visible authors NOT on your list (these are the leaks):',
         (res.visibleNotOnList && res.visibleNotOnList.length ? res.visibleNotOnList.join(', ') : 'none'),

@@ -392,6 +392,39 @@ function probePage() {
       }
     }
   }
+  /* where is the search box, and if it is not visible, what is hiding it */
+  const SEARCH_SEL = '[data-testid="SearchBox_Search_Input"], [data-testid="searchIconButton"], '
+    + '[role="search"], form[action="/search"], [aria-label="Search and explore"]';
+  const boxes = document.querySelectorAll(SEARCH_SEL);
+  out.search = { found: boxes.length, visible: false, hiddenBy: null, chain: [] };
+  if (boxes.length) {
+    const box = boxes[0];
+    const r = box.getBoundingClientRect();
+    out.search.visible = r.width > 0 && r.height > 0;
+    let n = box, hops = 0;
+    while (n && n !== document.documentElement && hops < 25) {
+      const cs = getComputedStyle(n);
+      const qx = n.getAttributeNames().filter(a => a.startsWith('data-qx-'));
+      const testid = n.getAttribute('data-testid');
+      if (qx.length || testid) {
+        out.search.chain.push({
+          testid: testid || null,
+          qx: qx.map(a => a + '=' + n.getAttribute(a)),
+          display: cs.display
+        });
+      }
+      if (!out.search.hiddenBy && (cs.display === 'none' || cs.visibility === 'hidden')) {
+        out.search.hiddenBy = {
+          testid: testid || null, tag: n.tagName.toLowerCase(),
+          display: cs.display, visibility: cs.visibility,
+          qx: qx.map(a => a + '=' + n.getAttribute(a)),
+          className: (n.className || '').toString().slice(0, 80)
+        };
+      }
+      n = n.parentElement; hops++;
+    }
+  }
+
   const dep = out.cellToArticleDepth;
   out.cellToArticleDepth = dep.length
     ? { min: Math.min(...dep), max: Math.max(...dep), sample: dep.slice(0, 8) }

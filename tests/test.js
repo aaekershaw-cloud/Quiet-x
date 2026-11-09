@@ -215,6 +215,38 @@ bare.remove();
 go('/home');
 qx.setS(S, 'me');
 
+console.log('search box is un-hideable');
+qx.setS(Object.assign({}, globalThis.QX.DEFAULTS, { allowlist: S.allowlist, hideSidebar: true, hideExploreNav: true }), 'me');
+
+// narrow layout: X puts search in the top bar, not the sidebar
+const topbar = document.createElement('div');
+topbar.innerHTML = '<div id="bar" data-qx-topic="1"><div id="searchhost" data-qx-hide="1">' +
+  '<input data-testid="SearchBox_Search_Input"></div></div>';
+document.body.appendChild(topbar);
+qx.protectSearch();
+check('marks removed from the search host', document.getElementById('searchhost').getAttribute('data-qx-hide'), null);
+check('marks removed from its ancestor', document.getElementById('bar').getAttribute('data-qx-topic'), null);
+check('ancestor flagged keep-search', document.getElementById('bar').getAttribute('data-qx-keep-search'), '1');
+
+// a sidebar already marked for wholesale hiding, that turns out to contain search
+const side2 = document.createElement('div');
+side2.setAttribute('data-testid', 'sidebarColumn');
+side2.setAttribute('data-qx-sidebar-mode', 'all');
+side2.innerHTML = '<form role="search"><input data-testid="SearchBox_Search_Input"></form>';
+document.body.appendChild(side2);
+qx.protectSearch();
+check('wholesale hide downgraded to keep-search', side2.getAttribute('data-qx-sidebar-mode'), 'keep-search');
+
+// an explore link that is a search affordance is spared
+const exp = document.createElement('a');
+exp.setAttribute('href', '/explore');
+exp.setAttribute('aria-label', 'Search and explore');
+document.body.appendChild(exp);
+qx.protectSearch();
+check('search-ish explore link flagged keep', exp.getAttribute('data-qx-keep-search'), '1');
+topbar.remove(); side2.remove(); exp.remove();
+qx.setS(S, 'me');
+
 console.log('leak regressions');
 // a stranger's post that merely mentions an allowed account must stay hidden
 const mention = post({ handle: 'randomguy', text: 'hey <a href="/good">@good</a> look at this' });
