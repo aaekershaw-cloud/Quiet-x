@@ -14,6 +14,7 @@
   let stopped = false;
   let gatePassed = false;
   let lockedOut = false;
+  let importing = false;   /* a sync is driving this tab: no gate, no lockout */
 
   const RESERVED = new Set(['home', 'explore', 'notifications', 'messages', 'i', 'settings',
     'search', 'compose', 'bookmarks', 'lists', 'communities', 'jobs', 'topics', 'hashtag',
@@ -719,7 +720,7 @@
         });
         shownCount = 0; hiddenCount = 0;
         if (!res) return;
-        if (S.timeBudgetEnabled && !bypassActive() && res.seconds >= S.timeBudget * 60) {
+        if (S.timeBudgetEnabled && !bypassActive() && !importing && res.seconds >= S.timeBudget * 60) {
           showLockout(Math.round(res.seconds / 60));
         }
       } catch (e) { /* service worker asleep */ }
@@ -729,8 +730,9 @@
   /* ---------------- boot ---------------- */
   async function boot() {
     S = await Q.getSettings();
-    const st = await chrome.storage.local.get('bypassUntil');
+    const st = await chrome.storage.local.get(['bypassUntil', 'qxImporting']);
     bypassUntil = st.bypassUntil || 0;
+    importing = !!st.qxImporting;
     try { gatePassed = sessionStorage.getItem('qx-gate-passed') === '1'; } catch (e) { gatePassed = true; }
     applyFlags();
 
@@ -738,7 +740,7 @@
     captureOwnHandle();
     chrome.runtime.sendMessage({ type: 'qx-open' }).catch(() => {});
 
-    if (S.enabled && S.gateEnabled && !gatePassed && !bypassActive()
+    if (S.enabled && S.gateEnabled && !gatePassed && !bypassActive() && !importing
         && !/\/(following|followers)$/.test(location.pathname)) showGate();
 
     watchFollowButtons();
@@ -772,6 +774,7 @@
         shownThisSession = 0; stopped = false;
         applyFlags(); processAll();
       }
+      if (changes.qxImporting) importing = !!changes.qxImporting.newValue;
       if (changes.bypassUntil) {
         bypassUntil = changes.bypassUntil.newValue || 0;
         applyFlags(); processAll();

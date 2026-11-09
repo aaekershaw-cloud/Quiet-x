@@ -15,6 +15,7 @@
     defaultReplies: true,     // used for newly added / imported accounts
     defaultReposts: true,
     mirrorFollowing: true,    // allowlist tracks who you follow, live
+    myHandle: '',             // fallback when X hides the profile link (narrow windows)
     showReplyContext: true,   // show the post an allowed reply is answering
 
     /* feed surgery */

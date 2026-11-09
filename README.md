@@ -135,3 +135,20 @@ Backup: export/import everything as JSON, including your allowlist.
   allowlisted by this, and an unrelated hidden post above a reply stays hidden.
 - Defaults for every allowed account are now posts + replies + reposts. A one-time
   migration applies this to accounts already on your list.
+
+### 1.4.1 — sync works on a laptop window
+
+- **Handle detection no longer depends on the left nav.** It read the profile link and the
+  account switcher, both of which X removes when the browser window is narrow — so a sync
+  worked on a wide window and, on a laptop one, sat on the timeline retrying for 15 seconds
+  and gave up. It now also reads the handle from the avatar element's own testid, the
+  composer's profile link, and an aria-labelled profile link.
+- **A failed sync now says why.** Signed out in this Chrome profile, wrong handle, empty
+  list, list never rendered, rate-limited — each gets its own message, with the raw
+  diagnostics shown in the Diagnostics box. Previously every failure looked identical.
+- **"Your X handle"** in settings: a fallback you can type in if detection still fails.
+- **The scraper waits for the list to render** before scrolling, and scrolls whichever
+  element is actually scrollable rather than assuming the window.
+- The sync tab no longer gets the door pause or the daily lockout on top of it.
+- Added `tests/import-test.js` covering handle detection across layouts (wide nav, narrow
+  window, nested avatar, signed out, unrecognised) and the scraper's three outcomes.

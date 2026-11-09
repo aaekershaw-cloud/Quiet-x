@@ -177,7 +177,18 @@ async function main() {
     btn.disabled = true; btn.textContent = 'Syncing… leave the tab alone';
     try {
       const res = await chrome.runtime.sendMessage({ type: 'qx-import' });
-      if (!res || res.error) toast(res && res.error ? res.error : 'Import failed');
+      if (!res || res.error) {
+        const out = $('#diagOut');
+        out.hidden = false; $('#copyDiag').hidden = false;
+        out.value = (res && res.error ? res.error : 'Sync failed')
+          + (res && res.diag ? '\n\n' + JSON.stringify(res.diag, null, 1) : '')
+          + (res && res.probe ? '\n\nprobe: ' + JSON.stringify(res.probe, null, 1) : '');
+        toast(res && res.error ? res.error.slice(0, 90) : 'Sync failed');
+        if (res && res.needsHandle) {
+          const f = document.querySelector('[data-setting="myHandle"]');
+          if (f) { f.focus(); f.scrollIntoView({ block: 'center' }); }
+        }
+      }
       else {
         S = await Q.getSettings();
         renderList();
