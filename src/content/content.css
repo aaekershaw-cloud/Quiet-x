@@ -138,3 +138,11 @@ html[data-qx-ads="1"] [data-testid="placementTracking"] { display: none !importa
 /* ---------- followed topics / extra timeline tabs ---------- */
 html[data-qx-topics="1"] [data-qx-topic="1"]:not([data-qx-keep-search="1"]) { display: none !important; }
 html[data-qx-tabbar="1"] [data-testid="primaryColumn"] [role="tablist"] { display: none !important; }
+
+/* profile allow toggle: a small pill on its own line under the name */
+.qx-pill {
+  all: unset; display: inline-block; margin: 6px 0 2px; cursor: pointer;
+  padding: 2px 10px; border-radius: 999px; border: 1px solid rgba(113,118,123,.5);
+  font: 500 12px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif; color: #8b98a5;
+}
+.qx-pill:hover { color: #e7e9ea; background: rgba(113,118,123,.15); }

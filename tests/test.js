@@ -239,6 +239,45 @@ adCell2.remove();
 go('/home');
 qx.setS(S, 'me');
 
+console.log('profile toggle stays out of the action row');
+(() => {
+  const go2 = p => dom.window.history.pushState({}, '', p);
+  const col = document.createElement('div');
+  col.setAttribute('data-testid', 'primaryColumn');
+  col.innerHTML =
+    '<div id="actions"><div data-testid="userActions"></div><button data-testid="99-unfollow">Following</button></div>' +
+    '<div data-testid="UserName">AJ <span>@alojohhardcore</span></div><div id="bio">bio</div>';
+  document.body.appendChild(col);
+  go2('/alojohhardcore');
+  qx.setS(Object.assign({}, globalThis.QX.DEFAULTS, { allowlist: { alojohhardcore: { replies: true, reposts: true } } }), 'me');
+  qx.injectProfileButton();
+  const btn = document.getElementById('qx-profile-btn');
+  check('toggle injected', !!btn, true);
+  check('not inside the action row', document.getElementById('actions').contains(btn), false);
+  check('action row untouched', document.getElementById('actions').children.length, 2);
+  check('placed right after the name', btn.previousElementSibling.getAttribute('data-testid'), 'UserName');
+  check('shows allowed state', btn.textContent, 'On your timeline ✓');
+  qx.injectProfileButton();
+  check('not duplicated on repeat passes', document.querySelectorAll('#qx-profile-btn').length, 1);
+
+  // navigate to another profile in the same tab: toggle must follow
+  go2('/someoneelse');
+  qx.injectProfileButton();
+  check('handle updates on navigation', btn.dataset.qxHandleFor, 'someoneelse');
+  check('state updates on navigation', btn.textContent, '+ Allow on timeline');
+
+  // no name block found: never fall back to the action row
+  document.getElementById('qx-profile-btn').remove();
+  col.querySelector('[data-testid="UserName"]').remove();
+  qx.injectProfileButton();
+  check('no name block: nothing injected anywhere', !!document.getElementById('qx-profile-btn'), false);
+
+  go2('/home');
+  qx.injectProfileButton();
+  col.remove();
+  qx.setS(S, 'me');
+})();
+
 console.log('search box is un-hideable');
 qx.setS(Object.assign({}, globalThis.QX.DEFAULTS, { allowlist: S.allowlist, hideSidebar: true, hideExploreNav: true }), 'me');
 

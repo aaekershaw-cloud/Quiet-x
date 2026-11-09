@@ -218,3 +218,13 @@ start with `_`, which Chrome reserves, and it will refuse to load the extension.
 - The popup shows the running version, so you can confirm a reload took.
 - Tests use repo-relative paths and run from a checkout; the README's Tests section, lost
   in an earlier update, is restored.
+
+### 1.5.4 — the profile search icon is back
+
+- **The "On timeline" toggle no longer goes in X's action row.** Adding it there pushed
+  X's Follow button out of view. X treated that as the Follow button being scrolled away
+  and moved Follow up into the top bar, where it replaced the magnifier for searching that
+  account's posts. The toggle is now a small pill on its own line under the account's name,
+  and it is never placed in the action row, even when the name block can't be found.
+- Fixed the toggle acting on the wrong account after moving between profiles in the same
+  tab: it now reads the handle when clicked instead of when it was created.

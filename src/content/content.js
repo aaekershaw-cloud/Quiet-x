@@ -631,32 +631,37 @@
   }
 
   /* ---------------- profile allow button ---------------- */
+  /* The allow toggle sits on its own line under the name, never in X's action row.
+     Inserting into that row pushed X's Follow button out of view; X then treated it
+     as scrolled away and moved Follow into the top bar, displacing the button for
+     searching that account's posts. */
   function injectProfileButton() {
     const r = route();
-    if (!r.isProfile) return;
+    const existing = document.getElementById('qx-profile-btn');
+    if (!r.isProfile) { if (existing) existing.remove(); return; }
     const handle = location.pathname.split('/').filter(Boolean)[0].toLowerCase();
-    const anchor = document.querySelector('[data-testid="userActions"]')
-      || document.querySelector('[data-testid$="-follow"]')
-      || document.querySelector('[data-testid$="-unfollow"]');
-    if (!anchor || !anchor.parentElement) return;
-    let btn = document.getElementById('qx-profile-btn');
-    const allowed = !!S.allowlist[handle];
+    const nameBlock = document.querySelector('[data-testid="primaryColumn"] [data-testid="UserName"]');
+    if (!nameBlock || !nameBlock.parentElement) return;   /* never fall back to the action row */
+
+    let btn = existing;
     if (!btn) {
       btn = document.createElement('button');
       btn.id = 'qx-profile-btn';
-      btn.className = 'qx-btn qx-ghost';
-      btn.style.marginRight = '8px';
+      btn.className = 'qx-pill';
       btn.addEventListener('click', async e => {
         e.preventDefault();
+        e.stopPropagation();
+        const h = btn.dataset.qxHandleFor;          /* read at click time: tabs navigate */
+        if (!h) return;
         const s = await Q.getSettings();
-        if (s.allowlist[handle]) delete s.allowlist[handle];
-        else s.allowlist[handle] = { name: '', added: Date.now(), manual: true, replies: s.defaultReplies, reposts: s.defaultReposts };
+        if (s.allowlist[h]) delete s.allowlist[h];
+        else s.allowlist[h] = { name: '', added: Date.now(), manual: true, replies: s.defaultReplies, reposts: s.defaultReposts };
         await Q.setSettings({ allowlist: s.allowlist });
       });
-      anchor.parentElement.insertBefore(btn, anchor);
     }
-    btn.textContent = allowed ? 'On timeline ✓' : 'Allow on timeline';
+    if (btn.previousElementSibling !== nameBlock) nameBlock.after(btn);
     btn.dataset.qxHandleFor = handle;
+    btn.textContent = S.allowlist[handle] ? 'On your timeline ✓' : '+ Allow on timeline';
   }
 
   /* ---------------- banners & overlays ---------------- */
@@ -902,7 +907,7 @@
 
   if (globalThis.__QX_TEST__) {
     globalThis.__qx = {
-      decide, authorHandle, isReply, isRepost, isQuote, isPromoted, replyTargets, route, statusId, filterActive, markAds, markTopicModules, handleTabs, hasAdLabel, trimSidebar, protectSearch, reposterHandle, allowReplyContext, entryFor,
+      decide, authorHandle, isReply, isRepost, isQuote, isPromoted, replyTargets, route, statusId, filterActive, markAds, markTopicModules, handleTabs, hasAdLabel, trimSidebar, protectSearch, injectProfileButton, reposterHandle, allowReplyContext, entryFor,
       setS: (s, own) => { S = s; ownHandle = own || null; }
     };
   } else {
