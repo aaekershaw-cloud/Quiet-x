@@ -179,39 +179,63 @@ check('not filtered even in everywhere scope', qx.filterActive(), false);
 qx.setS(Object.assign({}, globalThis.QX.DEFAULTS, { allowlist: S.allowlist, filterSearch: true }), 'me');
 check('filtered when you opt in', qx.filterActive(), true);
 
-console.log('sidebar keeps the search box');
-const sideWrap = document.createElement('div');
-sideWrap.setAttribute('data-testid', 'sidebarColumn');
-sideWrap.innerHTML =
-  '<div id="sbinner">' +
-  '  <div id="searchwrap"><form role="search"><input data-testid="SearchBox_Search_Input"></form></div>' +
-  '  <section id="trends">Trends</section>' +
-  '  <aside id="wtf" aria-label="Who to follow">Who to follow</aside>' +
-  '  <nav id="footer">Terms</nav>' +
-  '</div>';
-document.body.appendChild(sideWrap);
+console.log('sidebar: hide known noise, never search');
+const hiddenByUs = el => !!el.closest('[data-qx-hide]');
 qx.setS(Object.assign({}, globalThis.QX.DEFAULTS, { allowlist: S.allowlist, hideSidebar: true }), 'me');
-qx.trimSidebar();
-check('column itself not blanket-hidden', sideWrap.getAttribute('data-qx-sidebar-mode'), 'keep-search');
-check('search wrapper kept', document.getElementById('searchwrap').getAttribute('data-qx-hide'), null);
-check('search input still reachable', !!sideWrap.querySelector('[data-testid="SearchBox_Search_Input"]'), true);
-check('trends hidden', document.getElementById('trends').getAttribute('data-qx-hide'), '1');
-check('who-to-follow hidden', document.getElementById('wtf').getAttribute('data-qx-hide'), '1');
-check('footer hidden', document.getElementById('footer').getAttribute('data-qx-hide'), '1');
+function sidebar(inner) {
+  const el = document.createElement('div');
+  el.setAttribute('data-testid', 'sidebarColumn');
+  el.innerHTML = '<div><div>' + inner + '</div></div>';
+  document.body.appendChild(el);
+  return el;
+}
+const sb1 = sidebar(
+  '<div id="searchwrap"><form role="search"><input data-testid="SearchBox_Search_Input"></form></div>' +
+  '<section id="trends" aria-label="Timeline: Trending now"><div data-testid="trend">x</div></section>' +
+  '<aside id="wtf" aria-label="Who to follow"><div data-testid="UserCell">y</div></aside>' +
+  '<nav id="footer" aria-label="Footer">Terms</nav>' +
+  '<div id="unknown">Some module X ships next week</div>');
+qx.trimSidebar(); qx.protectSearch();
+check('search wrapper not hidden', hiddenByUs(document.getElementById('searchwrap')), false);
+check('trends hidden', hiddenByUs(document.getElementById('trends')), true);
+check('who-to-follow hidden', hiddenByUs(document.getElementById('wtf')), true);
+check('footer hidden', hiddenByUs(document.getElementById('footer')), true);
+check('unrecognised module left alone', hiddenByUs(document.getElementById('unknown')), false);
+check('no wholesale hide of the column', sb1.hasAttribute('data-qx-sidebar-mode'), false);
+sb1.remove();
 
-// a sidebar with no search box can still go entirely
-const bare = document.createElement('div');
-bare.setAttribute('data-testid', 'sidebarColumn');
-bare.innerHTML = '<section>Trends only</section>';
-document.body.appendChild(bare);
-sideWrap.remove();
+// search rendered as an icon button, not an input -- the case that slipped through
+const sb2 = sidebar(
+  '<div id="btnwrap"><button aria-label="Search posts"><svg></svg></button></div>' +
+  '<section id="trends2" aria-label="Timeline: Trending now"><div data-testid="trend">x</div></section>');
+qx.trimSidebar(); qx.protectSearch();
+check('search button survives', hiddenByUs(document.getElementById('btnwrap')), false);
+check('trends beside it still hidden', hiddenByUs(document.getElementById('trends2')), true);
+sb2.remove();
+
+// a sidebar with no search at all: noise hidden module by module, nothing wholesale
+const sb3 = sidebar('<section id="t3" aria-label="Timeline: Trending now"><div data-testid="trend">x</div></section>' +
+  '<div id="mystery"><span>something X renders that we do not recognise</span></div>');
 qx.trimSidebar();
-check('sidebar without search hidden wholesale', bare.getAttribute('data-qx-sidebar-mode'), 'all');
-// and with the option off, nothing is marked
+check('noise hidden without search present', hiddenByUs(document.getElementById('t3')), true);
+check('still no wholesale mode', sb3.hasAttribute('data-qx-sidebar-mode'), false);
+check('unrecognised neighbour survives when no search is found', hiddenByUs(document.getElementById('mystery')), false);
+// option off: marks cleared
 qx.setS(Object.assign({}, globalThis.QX.DEFAULTS, { allowlist: S.allowlist, hideSidebar: false }), 'me');
 qx.trimSidebar();
-check('option off: no mode set', bare.getAttribute('data-qx-sidebar-mode'), null);
-bare.remove();
+check('option off: marks cleared', hiddenByUs(document.getElementById('t3')), false);
+sb3.remove();
+qx.setS(Object.assign({}, globalThis.QX.DEFAULTS, { allowlist: S.allowlist, hideSidebar: true }), 'me');
+
+// a cashtag is a /search link -- it must not let protectSearch un-hide a promoted post
+const adCell2 = document.createElement('div');
+adCell2.setAttribute('data-testid', 'cellInnerDiv');
+adCell2.setAttribute('data-qx-ad', '1');
+adCell2.innerHTML = '<article data-testid="tweet"><a href="/search?q=%24TSLA" aria-label="Search $TSLA">$TSLA</a></article>';
+document.body.appendChild(adCell2);
+qx.protectSearch();
+check('cashtag in a promoted post does not un-hide it', adCell2.getAttribute('data-qx-ad'), '1');
+adCell2.remove();
 go('/home');
 qx.setS(S, 'me');
 
@@ -228,15 +252,6 @@ check('marks removed from the search host', document.getElementById('searchhost'
 check('marks removed from its ancestor', document.getElementById('bar').getAttribute('data-qx-topic'), null);
 check('ancestor flagged keep-search', document.getElementById('bar').getAttribute('data-qx-keep-search'), '1');
 
-// a sidebar already marked for wholesale hiding, that turns out to contain search
-const side2 = document.createElement('div');
-side2.setAttribute('data-testid', 'sidebarColumn');
-side2.setAttribute('data-qx-sidebar-mode', 'all');
-side2.innerHTML = '<form role="search"><input data-testid="SearchBox_Search_Input"></form>';
-document.body.appendChild(side2);
-qx.protectSearch();
-check('wholesale hide downgraded to keep-search', side2.getAttribute('data-qx-sidebar-mode'), 'keep-search');
-
 // an explore link that is a search affordance is spared
 const exp = document.createElement('a');
 exp.setAttribute('href', '/explore');
@@ -244,7 +259,7 @@ exp.setAttribute('aria-label', 'Search and explore');
 document.body.appendChild(exp);
 qx.protectSearch();
 check('search-ish explore link flagged keep', exp.getAttribute('data-qx-keep-search'), '1');
-topbar.remove(); side2.remove(); exp.remove();
+topbar.remove(); exp.remove();
 qx.setS(S, 'me');
 
 console.log('leak regressions');

@@ -172,3 +172,20 @@ Backup: export/import everything as JSON, including your allowlist.
   marks, so nothing it hides can contain search, wherever X has put it.
 - Diagnostics now reports where the search box is, whether it is visible, and if not,
   which element is hiding it and why.
+
+### 1.5.2 — the sidebar fails toward visible
+
+- **The sidebar is no longer ever hidden wholesale.** When it could not recognise a search
+  box inside the column, the previous version hid the entire column, so search rendered as
+  anything unrecognised (an icon button, say) went with it. The sidebar now hides only
+  modules it recognises as noise — trends, who to follow, premium, footer — and leaves
+  everything else. An unknown module stays visible rather than taking search down with it.
+- A hidden module can never contain a sibling: hiding climbs only through wrappers that
+  hold nothing but that module, and never into anything search-like.
+- Search protection no longer reaches into posts. A cashtag is a `/search` link, and
+  following it upward would have un-hidden a promoted post that mentioned `$TSLA`.
+- **Diagnostics rebuilt.** It now lists every search candidate rather than the first (which
+  was the left-nav Explore link, and said nothing about a missing header search), every
+  element Quiet X is hiding with where it sits on screen, and the contents of the top bar.
+  The leak report only counts pages that are actually being filtered — on a profile page,
+  which is never filtered, visible posts are correct, not leaks.

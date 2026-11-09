@@ -385,45 +385,101 @@ function probePage() {
     const rect = art.getBoundingClientRect();
     const painted = rect.height > 0 && getComputedStyle(art).display !== 'none'
       && getComputedStyle(target).visibility !== 'hidden';
+    const filtering = document.documentElement.getAttribute('data-qx-filter') === '1';
     if (painted) {
-      if (handle && out.visibleAuthors.length < 40) out.visibleAuthors.push(handle);
-      if (state !== 'allow' && out.leaking.length < 20) {
+      if (handle && out.visibleAuthors.length < 40 && filtering) out.visibleAuthors.push(handle);
+      if (filtering && state !== 'allow' && out.leaking.length < 20) {
         out.leaking.push({ handle: handle || '?', state, display: getComputedStyle(art).display });
       }
     }
   }
-  /* where is the search box, and if it is not visible, what is hiding it */
-  const SEARCH_SEL = '[data-testid="SearchBox_Search_Input"], [data-testid="searchIconButton"], '
-    + '[role="search"], form[action="/search"], [aria-label="Search and explore"]';
-  const boxes = document.querySelectorAll(SEARCH_SEL);
-  out.search = { found: boxes.length, visible: false, hiddenBy: null, chain: [] };
-  if (boxes.length) {
-    const box = boxes[0];
-    const r = box.getBoundingClientRect();
-    out.search.visible = r.width > 0 && r.height > 0;
-    let n = box, hops = 0;
-    while (n && n !== document.documentElement && hops < 25) {
+  out.filteringThisPage = document.documentElement.getAttribute('data-qx-filter') === '1';
+
+  const describe = (n) => {
+    const cs = getComputedStyle(n);
+    return {
+      tag: n.tagName.toLowerCase(),
+      testid: n.getAttribute('data-testid') || null,
+      aria: (n.getAttribute('aria-label') || '').slice(0, 50) || null,
+      placeholder: n.getAttribute('placeholder') || null,
+      text: (n.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 40) || null,
+      qx: n.getAttributeNames().filter(a => a.startsWith('data-qx-') && a !== 'data-qx-keep-search')
+        .map(a => a + '=' + n.getAttribute(a)),
+      display: cs.display, visibility: cs.visibility
+    };
+  };
+  const whatHides = (n) => {
+    let hops = 0;
+    while (n && n !== document.documentElement && hops < 30) {
       const cs = getComputedStyle(n);
-      const qx = n.getAttributeNames().filter(a => a.startsWith('data-qx-'));
-      const testid = n.getAttribute('data-testid');
-      if (qx.length || testid) {
-        out.search.chain.push({
-          testid: testid || null,
-          qx: qx.map(a => a + '=' + n.getAttribute(a)),
-          display: cs.display
-        });
-      }
-      if (!out.search.hiddenBy && (cs.display === 'none' || cs.visibility === 'hidden')) {
-        out.search.hiddenBy = {
-          testid: testid || null, tag: n.tagName.toLowerCase(),
-          display: cs.display, visibility: cs.visibility,
-          qx: qx.map(a => a + '=' + n.getAttribute(a)),
-          className: (n.className || '').toString().slice(0, 80)
-        };
-      }
+      if (cs.display === 'none' || cs.visibility === 'hidden') return describe(n);
       n = n.parentElement; hops++;
     }
+    return null;
+  };
+  const topOf = (n) => {
+    while (n && n !== document.documentElement) {
+      const r = n.getBoundingClientRect();
+      if (r.height > 0) return Math.round(r.top);
+      n = n.parentElement;
+    }
+    return null;
+  };
+
+  /* every search-like thing outside posts, not just the first */
+  const SEARCH_SEL = '[data-testid="SearchBox_Search_Input"], [data-testid*="search" i], [role="search"], '
+    + 'form[action="/search"], input[placeholder*="search" i], input[aria-label*="search" i], '
+    + 'button[aria-label*="search" i], a[aria-label*="search" i]';
+  out.searchCandidates = [];
+  for (const n of document.querySelectorAll(SEARCH_SEL)) {
+    if (n.closest('article, [data-testid="cellInnerDiv"]')) continue;
+    if (out.searchCandidates.length >= 10) break;
+    const r = n.getBoundingClientRect();
+    const d = describe(n);
+    d.visible = r.width > 0 && r.height > 0;
+    d.top = topOf(n);
+    d.inSidebar = !!n.closest('[data-testid="sidebarColumn"]');
+    d.inNav = !!n.closest('header, nav[role="navigation"]');
+    if (!d.visible) d.hiddenBy = whatHides(n);
+    out.searchCandidates.push(d);
   }
+
+  /* everything this extension is currently hiding outside posts, with where it sits */
+  out.hiddenByExtension = [];
+  for (const n of document.querySelectorAll('[data-qx-hide], [data-qx-topic], [data-qx-ad]')) {
+    if (n.closest('article')) continue;
+    if (out.hiddenByExtension.length >= 30) break;
+    const d = describe(n);
+    d.top = topOf(n.parentElement);
+    d.inSidebar = !!n.closest('[data-testid="sidebarColumn"]');
+    out.hiddenByExtension.push(d);
+  }
+
+  /* the top bar of the page: what is up there, and what is not visible */
+  const col = document.querySelector('[data-testid="primaryColumn"]');
+  out.topBar = [];
+  if (col) {
+    for (const n of col.querySelectorAll('[aria-label], [data-testid], [role="button"], input, a')) {
+      if (out.topBar.length >= 25) break;
+      if (n.closest('article, [data-testid="cellInnerDiv"]')) continue;
+      const t = topOf(n);
+      if (t === null || t > 140) continue;
+      const r = n.getBoundingClientRect();
+      const d = describe(n);
+      if (!d.testid && !d.aria && d.tag !== 'input') continue;
+      d.visible = r.width > 0 && r.height > 0;
+      if (!d.visible) d.hiddenBy = whatHides(n);
+      out.topBar.push(d);
+    }
+  }
+
+  const side = document.querySelector('[data-testid="sidebarColumn"]');
+  out.sidebar = side ? {
+    present: true,
+    rect: (() => { const r = side.getBoundingClientRect(); return { top: Math.round(r.top), left: Math.round(r.left), w: Math.round(r.width), h: Math.round(r.height) }; })(),
+    hiddenModules: side.querySelectorAll('[data-qx-hide]').length
+  } : { present: false };
+  out.viewport = { w: window.innerWidth, h: window.innerHeight };
 
   const dep = out.cellToArticleDepth;
   out.cellToArticleDepth = dep.length

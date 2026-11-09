@@ -358,36 +358,49 @@
     }
   }
 
-  /* ---------------- sidebar, minus the noise, plus search ---------------- */
+  /* ---------------- sidebar, minus the noise ---------------- */
+  /* Hide only what is recognised as noise, never the column as a whole. The earlier
+     version hid everything when it could not find a search box, which fails toward
+     hiding search whenever X renders search as something unrecognised. Hiding a
+     known list of modules fails the other way: an unknown module stays visible. */
+  const SIDEBAR_NOISE = /(trend|what.?s happening|who to follow|you might like|relevant people|live on x|subscribe|premium|verified|today.?s news|footer)/i;
+  const SEARCHISH = 'input, form, [role="search"], [aria-label*="search" i], [data-testid*="search" i]';
+
+  /* A module's boundary: climb only through wrappers that hold nothing but this
+     module (single-child), and never into anything search-like. So a hidden node
+     can never contain a sibling module — known or unknown — let alone search. */
+  function moduleOf(el, col) {
+    let n = el;
+    while (n.parentElement && n.parentElement !== col
+           && n.parentElement.children.length === 1
+           && !n.parentElement.querySelector(SEARCHISH)) {
+      n = n.parentElement;
+    }
+    return n;
+  }
+
   function trimSidebar() {
+    /* clear the wholesale mode older versions set */
+    document.querySelectorAll('[data-qx-sidebar-mode]').forEach(n => n.removeAttribute('data-qx-sidebar-mode'));
     const col = document.querySelector('[data-testid="sidebarColumn"]');
     if (!col) return;
-
     if (!S.hideSidebar) {
-      col.removeAttribute('data-qx-sidebar-mode');
       col.querySelectorAll('[data-qx-hide="1"]').forEach(n => n.removeAttribute('data-qx-hide'));
       return;
     }
-
-    const search = col.querySelector('[data-testid="SearchBox_Search_Input"]')
-      || col.querySelector('[role="search"]')
-      || col.querySelector('form[action="/search"]');
-
-    /* No search box in there (some pages) — then the whole column can go. */
-    if (!search) { col.setAttribute('data-qx-sidebar-mode', 'all'); return; }
-    col.setAttribute('data-qx-sidebar-mode', 'keep-search');
-
-    /* Walk from the search box up to the column, hiding everything alongside it. */
-    let node = search;
-    while (node && node !== col && node.parentElement) {
-      const parent = node.parentElement;
-      for (const sib of parent.children) {
-        if (sib === node) continue;
-        if (sib.contains(search)) continue;
-        sib.setAttribute('data-qx-hide', '1');
-      }
-      node.removeAttribute('data-qx-hide');
-      node = parent;
+    const mark = (el) => {
+      if (!el || el === col) return;
+      if (el.matches(SEARCHISH) || el.querySelector(SEARCHISH)) return;
+      el.setAttribute('data-qx-hide', '1');
+    };
+    for (const el of col.querySelectorAll('section[aria-label], div[aria-label], aside[aria-label], nav[aria-label]')) {
+      const label = el.getAttribute('aria-label') || '';
+      if (/search/i.test(label)) continue;
+      if (SIDEBAR_NOISE.test(label)) mark(moduleOf(el, col));
+    }
+    for (const el of col.querySelectorAll('[data-testid="trend"], [data-testid="UserCell"], '
+      + '[data-testid="super-upsell-UpsellCardRenderProperties"], a[href^="/i/premium"], a[href^="/i/verified"]')) {
+      mark(moduleOf(el, col));
     }
   }
 
@@ -396,26 +409,28 @@
      this extension hides may contain it. Runs after every other sweep. */
   const SEARCH_SELECTORS = [
     '[data-testid="SearchBox_Search_Input"]',
-    '[data-testid="searchIconButton"]',
+    '[data-testid*="search" i]',
     '[role="search"]',
     'form[action="/search"]',
-    'a[href^="/explore"][aria-label*="Search" i]',
-    '[aria-label="Search and explore"]',
-    '[data-testid="ExploreTimelines_SearchBox"]'
+    'input[placeholder*="search" i]',
+    'input[aria-label*="search" i]',
+    'button[aria-label*="search" i]',
+    'a[aria-label*="search" i]',
+    '[aria-label="Search and explore"]'
   ].join(', ');
 
   function protectSearch() {
     let boxes;
     try { boxes = document.querySelectorAll(SEARCH_SELECTORS); } catch (e) { return; }
     for (const box of boxes) {
+      /* Never reach into posts: a cashtag is a /search link, and un-hiding its
+         ancestors would un-hide a promoted post that mentions $TSLA. */
+      if (box.closest('article, [data-testid="cellInnerDiv"]')) continue;
       let n = box;
       while (n && n !== document.documentElement) {
         n.removeAttribute('data-qx-hide');
         n.removeAttribute('data-qx-topic');
         n.removeAttribute('data-qx-ad');
-        if (n.getAttribute('data-qx-sidebar-mode') === 'all') {
-          n.setAttribute('data-qx-sidebar-mode', 'keep-search');
-        }
         n.setAttribute('data-qx-keep-search', '1');
         n = n.parentElement;
       }
