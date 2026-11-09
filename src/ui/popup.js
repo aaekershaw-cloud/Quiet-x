@@ -35,7 +35,7 @@ function renderAcct() {
   btn.textContent = on ? 'Remove' : 'Allow';
   btn.onclick = async () => {
     if (S.allowlist[handle]) delete S.allowlist[handle];
-    else S.allowlist[handle] = { name: '', added: Date.now(), replies: S.defaultReplies, reposts: S.defaultReposts };
+    else S.allowlist[handle] = { name: '', added: Date.now(), manual: true, replies: S.defaultReplies, reposts: S.defaultReposts };
     S = await Q.setSettings({ allowlist: S.allowlist });
     renderAcct();
   };

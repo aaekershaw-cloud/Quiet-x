@@ -12,8 +12,10 @@
 
     /* allowlist: { handle(lowercase): {name, replies, reposts, added} } */
     allowlist: {},
-    defaultReplies: false,    // used for newly added / imported accounts
-    defaultReposts: false,
+    defaultReplies: true,     // used for newly added / imported accounts
+    defaultReposts: true,
+    mirrorFollowing: true,    // allowlist tracks who you follow, live
+    showReplyContext: true,   // show the post an allowed reply is answering
 
     /* feed surgery */
     hideForYou: true,

@@ -21,8 +21,13 @@ is matched against your allowlist, so you never catch a glimpse of something you
 
 - **Not on the list → never shown.**
 - **Per account**, you choose whether to see their **replies** and their **reposts**.
-  Both default to off, which is what makes the timeline quiet. A reply to *themselves*
-  (a thread they are continuing) always shows, even with replies off.
+  Both default to on: an allowed account's posts, replies and reposts all come through.
+- **A repost belongs to whoever reposted it.** If you allow someone's reposts, you see what
+  they repost without having to allow each original author — and those authors gain nothing
+  from it: their own posts stay hidden until you add them yourself.
+- **Mirror mode** keeps the allowlist in step with who you follow: follow someone on X and
+  they are allowed through, unfollow and they drop off. Accounts you add by hand are marked
+  as yours and are never pruned by a sync.
 - **Muted words** apply on top, including to approved accounts.
 - **Profile pages are never filtered**, so you can always go and read someone directly.
   Each profile gets an **Allow on timeline** button next to Follow.
@@ -111,13 +116,22 @@ Backup: export/import everything as JSON, including your allowlist.
 - Added one-time migrations, so changes to defaults reach existing installs instead of only
   new ones. Each runs once and won't overwrite a choice you have made since.
 
-## Tests
+### 1.4.0 — mirror who you follow, reposts belong to the reposter
 
-`tests/test.js` exercises the filtering decisions against synthetic X markup (jsdom):
-allowlist behaviour, replies vs self-threads, reposts, muted words, ads, topic tabs and
-which pages get filtered. Each leak fixed since 1.0 has a regression test here.
-
-```
-npm install jsdom
-node tests/test.js
-```
+- **Mirror mode** (on by default): following someone on X allows them through, unfollowing
+  drops them. Captured live from the follow buttons, and only once the button actually
+  flips, so a cancelled unfollow confirmation does not drop the account. "Sync with my
+  following list" does a full pass and prunes accounts you no longer follow — but only if
+  the scrape found at least half of your current list, so a rate-limited partial scrape
+  can never wipe it. Hand-added accounts are flagged and survive pruning.
+- **Reposts are now attributed to the reposter, not the original author.** Previously an
+  allowed account reposting a stranger was hidden, because the post's author was the
+  stranger. Allowing someone's reposts is now enough to see what they repost. Crucially,
+  the reposted account is *not* added to your allowlist and its own posts stay hidden.
+- A post written by an allowed account shows even when the repost label belongs to someone
+  else — they wrote it; the reposts switch governs what *they* repost.
+- **Replies now show what they are answering.** An allowed account's reply reveals the post
+  above it that it replied to, so replies are not stranded. That post's author is not
+  allowlisted by this, and an unrelated hidden post above a reply stays hidden.
+- Defaults for every allowed account are now posts + replies + reposts. A one-time
+  migration applies this to accounts already on your list.

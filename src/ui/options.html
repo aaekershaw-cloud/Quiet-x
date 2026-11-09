@@ -29,9 +29,20 @@
   </div>
 
   <div class="panel">
+    <h2>Mirror who I follow</h2>
+    <div class="row">
+      <div class="label"><b>Keep the allowlist in step with my follows</b><span>Follow someone on X and they are allowed through; unfollow and they drop off. Accounts you add by hand are kept either way.</span></div>
+      <input type="checkbox" data-setting="mirrorFollowing">
+    </div>
+    <div class="tools" style="margin:12px 0 0">
+      <button class="btn" id="import">Sync with my following list</button>
+      <span class="pill" id="lastSync">never synced</span>
+    </div>
+  </div>
+
+  <div class="panel">
     <h2>Allowed accounts <span class="pill" id="count">0</span></h2>
     <div class="tools">
-      <button class="btn" id="import">Import everyone I follow</button>
       <button class="btn ghost" id="repliesAll">Replies: all on</button>
       <button class="btn ghost" id="repliesNone">Replies: all off</button>
       <button class="btn danger" id="clear">Remove all</button>
@@ -65,6 +76,7 @@
     <div class="row"><div class="label"><b>Hide quote posts</b><span>Quote-dunking is most of the bad-feeling content.</span></div><input type="checkbox" data-setting="hideQuotePosts"></div>
     <div class="row"><div class="label"><b>Show a thin line where a post was hidden</b><span>Lets you one-click allow an account you are missing. Off = fully invisible.</span></div><input type="checkbox" data-setting="showPlaceholders"></div>
     <div class="row"><div class="label"><b>Always show my own posts</b></div><input type="checkbox" data-setting="allowOwnPosts"></div>
+    <div class="row"><div class="label"><b>Show what an allowed reply is answering</b><span>When someone you allow replies, the post they replied to is shown for context — without putting its author on your list.</span></div><input type="checkbox" data-setting="showReplyContext"></div>
   </div>
 
   <div class="panel">

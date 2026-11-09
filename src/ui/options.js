@@ -90,7 +90,7 @@ async function addHandles(text) {
   let n = 0;
   for (const h of parts) {
     if (S.allowlist[h]) continue;
-    S.allowlist[h] = { name: '', added: Date.now(), replies: S.defaultReplies, reposts: S.defaultReposts };
+    S.allowlist[h] = { name: '', added: Date.now(), manual: true, replies: S.defaultReplies, reposts: S.defaultReposts };
     n++;
   }
   S = await Q.setSettings({ allowlist: S.allowlist });
@@ -137,11 +137,23 @@ async function renderStats() {
 }
 
 /* ---------- wiring ---------- */
+async function renderLastSync() {
+  const { lastMirrorSync } = await chrome.storage.local.get('lastMirrorSync');
+  const el = $('#lastSync');
+  if (!el) return;
+  if (!lastMirrorSync) { el.textContent = 'never synced'; return; }
+  const mins = Math.round((Date.now() - lastMirrorSync) / 60000);
+  el.textContent = mins < 60 ? 'synced ' + mins + 'm ago'
+    : mins < 1440 ? 'synced ' + Math.round(mins / 60) + 'h ago'
+      : 'synced ' + Math.round(mins / 1440) + 'd ago';
+}
+
 async function main() {
   S = await Q.getSettings();
   bind();
   renderList();
   renderStats();
+  renderLastSync();
 
   $('#search').oninput = renderList;
   $('#addBtn').onclick = () => { addHandles($('#add').value); $('#add').value = ''; };
@@ -162,19 +174,26 @@ async function main() {
 
   $('#import').onclick = async () => {
     const btn = $('#import');
-    btn.disabled = true; btn.textContent = 'Importing… leave the tab alone';
+    btn.disabled = true; btn.textContent = 'Syncing… leave the tab alone';
     try {
       const res = await chrome.runtime.sendMessage({ type: 'qx-import' });
       if (!res || res.error) toast(res && res.error ? res.error : 'Import failed');
       else {
         S = await Q.getSettings();
         renderList();
-        toast('Imported ' + res.added + ' new account' + (res.added === 1 ? '' : 's') + ' (' + res.scanned + ' scanned)');
+        const bits = [res.added + ' added'];
+        if (res.removed) bits.push(res.removed + ' removed');
+        bits.push(res.scanned + ' scanned');
+        toast(bits.join(', '));
+        if (res.pruneSkipped) {
+          toast('Scrape looked incomplete, so nothing was removed — try again when X is not rate-limiting.');
+        }
+        renderLastSync();
       }
     } catch (e) {
       toast('Import failed: ' + e.message);
     }
-    btn.disabled = false; btn.textContent = 'Import everyone I follow';
+    btn.disabled = false; btn.textContent = 'Sync with my following list';
   };
 
   $('#export').onclick = async () => {

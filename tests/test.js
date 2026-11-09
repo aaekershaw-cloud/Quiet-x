@@ -28,14 +28,18 @@ const S = Object.assign({}, globalThis.QX.DEFAULTS, {
 });
 qx.setS(S, 'me');
 
-function post({ handle, text = 'hello world', replyTo = null, social = null, promoted = false, quote = false }) {
+function post({ handle, text = 'hello world', replyTo = null, social = null, promoted = false, quote = false, reposter = null }) {
   const cell = document.createElement('div');
   cell.setAttribute('data-testid', 'cellInnerDiv');
   const article = document.createElement('article');
   article.setAttribute('data-testid', 'tweet');
   let html = '';
   if (promoted) html += '<div data-testid="placementTracking"></div>';
-  if (social) html += `<div data-testid="socialContext">${social}</div>`;
+  if (social) {
+    html += reposter
+      ? `<a href="/${reposter}"><div data-testid="socialContext">${social}</div></a>`
+      : `<div data-testid="socialContext">${social}</div>`;
+  }
   html += `<div data-testid="User-Name"><a href="/${handle}"><span>${handle}</span></a>` +
           `<a href="/${handle}"><span>@${handle}</span></a></div>`;
   if (replyTo) html += `<div dir="ltr">Replying to <a href="/${replyTo}">@${replyTo}</a></div>`;
@@ -77,8 +81,12 @@ check('self-thread still shows', st(post({ handle: 'good', replyTo: 'good' })), 
 check('reply shows when replies on', st(post({ handle: 'chatty', replyTo: 'someone' })), 'allow');
 
 console.log('reposts');
-check('repost hidden when reposts off', st(post({ handle: 'good', social: 'Someone reposted' })), 'hide');
-check('repost shows when reposts on', st(post({ handle: 'chatty', social: 'Someone reposted' })), 'allow');
+// a post WRITTEN by an allowed account that someone else reposted: they wrote it, so it shows
+// regardless of their own reposts setting (that setting governs what THEY repost)
+check('allowed author, reposted by someone else, shows', st(post({ handle: 'good', social: 'Someone reposted' })), 'allow');
+check('reposts-on account likewise shows', st(post({ handle: 'chatty', social: 'Someone reposted' })), 'allow');
+// a stranger's post with a repost label and no identifiable reposter stays hidden
+check('stranger repost with no reposter stays hidden', st(post({ handle: 'randomguy', social: 'Someone reposted' })), 'hide');
 check('pinned is not a repost', st(post({ handle: 'good', social: 'Pinned' })), 'allow');
 
 console.log('other filters');
@@ -89,6 +97,76 @@ qx.setS(S2, 'me');
 check('quote hidden when enabled', st(post({ handle: 'good', quote: true })), 'hide');
 qx.setS(S, 'me');
 check('quote shows when disabled', st(post({ handle: 'good', quote: true })), 'allow');
+
+console.log('reposts belong to the reposter');
+const MS = Object.assign({}, globalThis.QX.DEFAULTS, {
+  allowlist: {
+    good: { name: 'Good', replies: true, reposts: true },
+    norepost: { name: 'No Reposts', replies: true, reposts: false }
+  }
+});
+qx.setS(MS, 'me');
+
+// an allowed account reposts a total stranger -> shown, credited to the reposter
+const r1 = post({ handle: 'stranger', social: 'Good reposted', reposter: 'good' });
+check('allowed account reposting a stranger shows', st(r1), 'allow');
+check('credited to the reposter', qx.decide(r1).handle, 'good');
+// ...and that stranger gains nothing: their own posts stay hidden
+check('reposted stranger is still blocked on their own', st(post({ handle: 'stranger' })), 'hide');
+check('reposted stranger not added to the allowlist', MS.allowlist.stranger, undefined);
+// reposts off for that account
+const r2 = post({ handle: 'stranger', social: 'No Reposts reposted', reposter: 'norepost' });
+check('reposts-off account: repost hidden', st(r2), 'hide');
+// a stranger reposting an allowed account still shows (author stands on their own)
+const r3 = post({ handle: 'good', social: 'Nobody reposted', reposter: 'nobody' });
+check('allowed author reposted by a stranger shows', st(r3), 'allow');
+// unidentifiable reposter, unknown author -> hidden, with a reason that says why
+const r4 = post({ handle: 'stranger', social: 'Someone reposted' });
+check('unidentifiable reposter hidden', st(r4), 'hide');
+check('reason names the problem', /not identifiable/.test(reason(r4)), true);
+
+console.log('reply context');
+// allowed account replies to a stranger: the stranger's post is shown for context
+const ctxPrimary = document.createElement('div');
+ctxPrimary.setAttribute('data-testid', 'primaryColumn');
+document.body.appendChild(ctxPrimary);
+function cellWith(article) {
+  const c = document.createElement('div');
+  c.setAttribute('data-testid', 'cellInnerDiv');
+  c.appendChild(article);
+  ctxPrimary.appendChild(c);
+  return c;
+}
+function art({ handle, replyTo }) {
+  const a = document.createElement('article');
+  a.setAttribute('data-testid', 'tweet');
+  let h = `<div data-testid="User-Name"><a href="/${handle}"><span>@${handle}</span></a></div>`;
+  if (replyTo) h += `<div dir="ltr">Replying to <a href="/${replyTo}">@${replyTo}</a></div>`;
+  a.innerHTML = h + '<div data-testid="tweetText">x</div>';
+  return a;
+}
+const parentCell = cellWith(art({ handle: 'stranger' }));
+const replyCell = cellWith(art({ handle: 'good', replyTo: 'stranger' }));
+parentCell.setAttribute('data-qx-state', 'stub');
+replyCell.setAttribute('data-qx-state', 'allow');
+qx.allowReplyContext();
+check('parent post revealed for context', parentCell.getAttribute('data-qx-state'), 'allow');
+check('marked as context, not an allowlist entry', parentCell.dataset.qxContext, '1');
+check('context does not touch the allowlist', MS.allowlist.stranger, undefined);
+
+// but an unrelated hidden post above an allowed reply stays hidden
+const unrelated = cellWith(art({ handle: 'randomguy' }));
+const reply2 = cellWith(art({ handle: 'good', replyTo: 'someoneelse' }));
+unrelated.setAttribute('data-qx-state', 'stub');
+reply2.setAttribute('data-qx-state', 'allow');
+qx.allowReplyContext();
+check('unrelated post above a reply stays hidden', unrelated.getAttribute('data-qx-state'), 'stub');
+
+console.log('defaults');
+check('new accounts show replies by default', globalThis.QX.DEFAULTS.defaultReplies, true);
+check('new accounts show reposts by default', globalThis.QX.DEFAULTS.defaultReposts, true);
+check('mirror mode on by default', globalThis.QX.DEFAULTS.mirrorFollowing, true);
+qx.setS(S, 'me');
 
 console.log('leak regressions');
 // a stranger's post that merely mentions an allowed account must stay hidden

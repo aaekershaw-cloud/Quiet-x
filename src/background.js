@@ -32,6 +32,21 @@ async function migrate(settings, done) {
     done.adsAndTopics = true;
   }
 
+  if (!done.mirrorDefaults) {
+    /* The user asked for this explicitly: every allowed account shows posts,
+       replies and reposts unless they change it later. */
+    const allowlist = Object.assign({}, settings.allowlist || {});
+    for (const h of Object.keys(allowlist)) {
+      allowlist[h] = Object.assign({}, allowlist[h], { replies: true, reposts: true });
+    }
+    patch.allowlist = allowlist;
+    patch.defaultReplies = true;
+    patch.defaultReposts = true;
+    if (settings.mirrorFollowing === undefined) patch.mirrorFollowing = true;
+    if (settings.showReplyContext === undefined) patch.showReplyContext = true;
+    done.mirrorDefaults = true;
+  }
+
   if (Object.keys(patch).length) await Q.setSettings(patch);
   await chrome.storage.local.set({ migrations: done });
 }
@@ -161,16 +176,40 @@ async function importFollowing() {
 
   const s = await Q.getSettings();
   const allowlist = Object.assign({}, s.allowlist);
+  const scraped = new Set(list.map(x => x.handle));
   let added = 0;
   for (const { handle: h, name } of list) {
     if (h === handle) continue;
     if (allowlist[h]) { if (name && !allowlist[h].name) allowlist[h].name = name; continue; }
-    allowlist[h] = { name: name || '', added: Date.now(), replies: s.defaultReplies, reposts: s.defaultReposts };
+    allowlist[h] = {
+      name: name || '', added: Date.now(), via: 'follow',
+      replies: s.defaultReplies, reposts: s.defaultReposts
+    };
     added++;
   }
+
+  /* Mirror mode: accounts you no longer follow come off the list. A partial scrape
+     (rate limit, scroll cut short) must never wipe the list, so prune only when the
+     scrape found at least half of what we already had. */
+  let removed = 0, pruneSkipped = false;
+  if (s.mirrorFollowing) {
+    const mirrored = Object.keys(allowlist).filter(h => !allowlist[h].manual);
+    if (scraped.size >= Math.floor(mirrored.length * 0.5) && scraped.size > 0) {
+      for (const h of mirrored) {
+        if (!scraped.has(h) && h !== handle) { delete allowlist[h]; removed++; }
+      }
+    } else {
+      pruneSkipped = true;
+    }
+  }
+
   await Q.setSettings({ allowlist });
+  await chrome.storage.local.set({ lastMirrorSync: Date.now() });
   await chrome.tabs.remove(tab.id).catch(() => {});
-  return { added, total: Object.keys(allowlist).length, scanned: list.length, handle };
+  return {
+    added, removed, pruneSkipped, handle,
+    total: Object.keys(allowlist).length, scanned: list.length
+  };
 }
 
 /* ---------------- diagnostics ---------------- */

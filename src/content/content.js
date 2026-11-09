@@ -140,6 +140,26 @@
     return replyTargets(article).length > 0;
   }
 
+  /* Who pressed repost. The label links to their profile; display names in the
+     label are not handles, so an unlinked label leaves this unknown. */
+  function reposterHandle(article) {
+    const ctx = article.querySelector('[data-testid="socialContext"]');
+    if (!ctx) return null;
+    const link = (ctx.closest && ctx.closest('a[href^="/"]')) || ctx.querySelector('a[href^="/"]');
+    if (!link) return null;
+    const m = (link.getAttribute('href') || '').match(/^\/([A-Za-z0-9_]{1,15})$/);
+    return m && !RESERVED.has(m[1].toLowerCase()) ? m[1].toLowerCase() : null;
+  }
+
+  /* Your own account behaves like an allowlist entry with everything on. */
+  function entryFor(handle) {
+    if (!handle) return null;
+    if (ownHandle && handle === ownHandle && S.allowOwnPosts) {
+      return { name: 'you', replies: true, reposts: true };
+    }
+    return S.allowlist[handle] || null;
+  }
+
   function isRepost(article) {
     const ctx = article.querySelector('[data-testid="socialContext"]');
     return !!ctx && REPOST_RE.test(ctx.textContent || '');
@@ -167,15 +187,47 @@
     if (S.hidePromoted && isPromoted(article)) return { state: 'hide', handle: null, reason: 'promoted' };
     const handle = authorHandle(article);
     if (!handle) return null;
-    if (ownHandle && handle === ownHandle && S.allowOwnPosts) return { state: 'allow', handle };
 
-    const entry = S.allowlist[handle];
+    /* shared filters, applied however a post earned its place */
+    const extraFilters = (who) => {
+      const kw = matchedKeyword(article);
+      if (kw) return { state: 'hide', handle: who, reason: 'muted word "' + kw + '"' };
+      if (S.hideQuotePosts && isQuote(article)) return { state: 'hide', handle: who, reason: 'quote post' };
+      return null;
+    };
+
+    /* A repost belongs to whoever reposted it, not to whoever wrote it. If you
+       allow their reposts you see it, and the original author gains nothing:
+       their own posts stay hidden until you add them yourself. */
+    if (isRepost(article)) {
+      const reposter = reposterHandle(article);
+      const rEntry = entryFor(reposter);
+      const aEntry = entryFor(handle);
+      let who = reposter || handle;
+      let reason = null;
+
+      let ok = false;
+      if (rEntry) {
+        if (rEntry.reposts) { ok = true; who = reposter; }
+        else { reason = 'repost (reposts off for @' + reposter + ')'; who = reposter; }
+      } else if (!reposter) {
+        reason = 'repost, reposter not identifiable';
+      } else {
+        reason = 'reposted by @' + reposter + ', who is not on your list';
+      }
+      /* the original author being allowed is reason enough on its own */
+      if (!ok && aEntry) { ok = true; who = handle; }
+      if (!ok) return { state: 'hide', handle: who, reason: reason || 'repost from outside your list' };
+
+      return extraFilters(who) || { state: 'allow', handle: who };
+    }
+
+    const entry = entryFor(handle);
     if (!entry) return { state: 'hide', handle, reason: 'not on allowlist' };
 
-    const kw = matchedKeyword(article);
-    if (kw) return { state: 'hide', handle, reason: 'muted word "' + kw + '"' };
-    if (S.hideQuotePosts && isQuote(article)) return { state: 'hide', handle, reason: 'quote post' };
-    if (isRepost(article) && !entry.reposts) return { state: 'hide', handle, reason: 'repost' };
+    const extra = extraFilters(handle);
+    if (extra) return extra;
+
     if (isReply(article) && !entry.replies) {
       const targets = replyTargets(article);
       const selfThread = targets.length > 0 && targets.every(t => t === handle);
@@ -216,7 +268,7 @@
   async function allowAccount(handle, withReplies) {
     const s = await Q.getSettings();
     s.allowlist[handle] = Object.assign(
-      { name: '', added: Date.now(), replies: !!withReplies, reposts: s.defaultReposts },
+      { name: '', added: Date.now(), manual: true, replies: !!withReplies, reposts: s.defaultReposts },
       s.allowlist[handle] || {},
       withReplies ? { replies: true } : {}
     );
@@ -290,12 +342,108 @@
       }
     }
 
+    if (active) allowReplyContext();
+
     if (S.enabled && !bypassActive()) {
       markAds();
       markTopicModules();
       handleTabs();
       injectProfileButton();
     }
+  }
+
+  /* ---------------- thread context ---------------- */
+  /* When an allowed account replies to someone, show what they replied to, so the
+     reply is not stranded. This does not put that someone on your allowlist: their
+     own posts stay hidden. */
+  function allowReplyContext() {
+    if (!S.showReplyContext) return;
+    const cells = Array.from(document.querySelectorAll('div[data-testid="cellInnerDiv"]'));
+    for (let i = 1; i < cells.length; i++) {
+      const cell = cells[i];
+      if (cell.getAttribute('data-qx-state') !== 'allow') continue;
+      const art = cell.querySelector('article[data-testid="tweet"]');
+      if (!art) continue;
+      const targets = replyTargets(art);
+      if (!targets.length) continue;
+
+      const prev = cells[i - 1];
+      if (prev.getAttribute('data-qx-state') === 'allow') continue;
+      const pArt = prev.querySelector('article[data-testid="tweet"]');
+      if (!pArt) continue;
+      const pHandle = authorHandle(pArt);
+      if (!pHandle || !targets.includes(pHandle)) continue;
+
+      prev.setAttribute('data-qx-state', 'allow');
+      prev.dataset.qxContext = '1';
+      const stub = prev.querySelector(':scope > .qx-stub');
+      if (stub) stub.remove();
+    }
+  }
+
+  /* ---------------- mirror who you follow ---------------- */
+  function handleForFollowButton(btn) {
+    const cell = btn.closest('[data-testid="UserCell"]');
+    if (cell) {
+      const h = handleFromLinks(cell);
+      if (h) return h;
+    }
+    const art = btn.closest('article[data-testid="tweet"]');
+    if (art) {
+      const h = authorHandle(art);
+      if (h) return h;
+    }
+    const r = route();
+    if (r.isProfile) return location.pathname.split('/').filter(Boolean)[0].toLowerCase();
+    return null;
+  }
+
+  async function mirrorAdd(handle) {
+    const s = await Q.getSettings();
+    if (s.allowlist[handle]) return;
+    s.allowlist[handle] = {
+      name: '', added: Date.now(), via: 'follow',
+      replies: s.defaultReplies, reposts: s.defaultReposts
+    };
+    await Q.setSettings({ allowlist: s.allowlist });
+  }
+
+  async function mirrorRemove(handle) {
+    const s = await Q.getSettings();
+    const e = s.allowlist[handle];
+    if (!e || e.manual) return;        /* a hand-added account is yours, not the mirror's */
+    delete s.allowlist[handle];
+    await Q.setSettings({ allowlist: s.allowlist });
+  }
+
+  /* Follow and unfollow on X, and the allowlist tracks it. The button's testid
+     carries a user id rather than a handle, so the handle comes from context; and
+     we only act once the button has actually flipped, so a cancelled unfollow
+     confirmation does not drop the account. */
+  function watchFollowButtons() {
+    document.addEventListener('click', (e) => {
+      if (!S || !S.enabled || !S.mirrorFollowing) return;
+      const btn = e.target && e.target.closest
+        && e.target.closest('[data-testid$="-follow"], [data-testid$="-unfollow"]');
+      if (!btn) return;
+      const before = btn.getAttribute('data-testid') || '';
+      const wasFollow = /-follow$/.test(before);
+      const handle = handleForFollowButton(btn);
+      if (!handle) return;
+
+      let tries = 0;
+      const t = setInterval(() => {
+        tries++;
+        const now = btn.getAttribute('data-testid') || '';
+        const flipped = wasFollow ? /-unfollow$/.test(now) : /-follow$/.test(now);
+        if (flipped) {
+          clearInterval(t);
+          if (wasFollow) mirrorAdd(handle); else mirrorRemove(handle);
+        } else if (tries > 16) {
+          clearInterval(t);
+        }
+      }, 250);
+    }, true);
   }
 
   /* ---------------- ads anywhere on the page ---------------- */
@@ -417,7 +565,7 @@
         e.preventDefault();
         const s = await Q.getSettings();
         if (s.allowlist[handle]) delete s.allowlist[handle];
-        else s.allowlist[handle] = { name: '', added: Date.now(), replies: s.defaultReplies, reposts: s.defaultReposts };
+        else s.allowlist[handle] = { name: '', added: Date.now(), manual: true, replies: s.defaultReplies, reposts: s.defaultReposts };
         await Q.setSettings({ allowlist: s.allowlist });
       });
       anchor.parentElement.insertBefore(btn, anchor);
@@ -593,6 +741,7 @@
     if (S.enabled && S.gateEnabled && !gatePassed && !bypassActive()
         && !/\/(following|followers)$/.test(location.pathname)) showGate();
 
+    watchFollowButtons();
     processAll();
     const mo = new MutationObserver(schedule);
     mo.observe(document.documentElement, { childList: true, subtree: true });
@@ -666,7 +815,7 @@
 
   if (globalThis.__QX_TEST__) {
     globalThis.__qx = {
-      decide, authorHandle, isReply, isRepost, isQuote, isPromoted, replyTargets, route, statusId, filterActive, markAds, markTopicModules, handleTabs, hasAdLabel,
+      decide, authorHandle, isReply, isRepost, isQuote, isPromoted, replyTargets, route, statusId, filterActive, markAds, markTopicModules, handleTabs, hasAdLabel, reposterHandle, allowReplyContext, entryFor,
       setS: (s, own) => { S = s; ownHandle = own || null; }
     };
   } else {
