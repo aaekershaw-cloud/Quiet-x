@@ -152,3 +152,14 @@ Backup: export/import everything as JSON, including your allowlist.
 - The sync tab no longer gets the door pause or the daily lockout on top of it.
 - Added `tests/import-test.js` covering handle detection across layouts (wide nav, narrow
   window, nested avatar, signed out, unrecognised) and the scraper's three outcomes.
+
+### 1.5.0 — search works again
+
+- **The search box survives "hide the right sidebar".** X puts search inside that column,
+  so hiding the column removed search along with the trends. The sidebar's other modules
+  are now hidden individually and the search box is kept. A sidebar with no search box in
+  it is still hidden wholesale.
+- **Search results are no longer filtered by default.** Searching is deliberate, like
+  opening a profile or a post, so a search shows every result — including accounts you have
+  not allowed. This no longer depends on the scope setting either. There is a toggle if you
+  do want results filtered to your allowlist.

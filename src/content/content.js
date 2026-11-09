@@ -47,6 +47,9 @@
     /* You clicked this post on purpose, so the conversation under it is yours to read.
        Independent of scope: opening a post means opening its replies. */
     if (r.isStatus) return S.filterStatusPages;
+    /* Searching is deliberate, like opening a profile: show what you searched for.
+       Independent of scope, so this does not depend on an unrelated setting. */
+    if (r.isSearch) return S.filterSearch;
     if (S.scope === 'everywhere') return !r.isProfile;
     return false;
   }
@@ -348,8 +351,42 @@
     if (S.enabled && !bypassActive()) {
       markAds();
       markTopicModules();
+      trimSidebar();
       handleTabs();
       injectProfileButton();
+    }
+  }
+
+  /* ---------------- sidebar, minus the noise, plus search ---------------- */
+  function trimSidebar() {
+    const col = document.querySelector('[data-testid="sidebarColumn"]');
+    if (!col) return;
+
+    if (!S.hideSidebar) {
+      col.removeAttribute('data-qx-sidebar-mode');
+      col.querySelectorAll('[data-qx-hide="1"]').forEach(n => n.removeAttribute('data-qx-hide'));
+      return;
+    }
+
+    const search = col.querySelector('[data-testid="SearchBox_Search_Input"]')
+      || col.querySelector('[role="search"]')
+      || col.querySelector('form[action="/search"]');
+
+    /* No search box in there (some pages) — then the whole column can go. */
+    if (!search) { col.setAttribute('data-qx-sidebar-mode', 'all'); return; }
+    col.setAttribute('data-qx-sidebar-mode', 'keep-search');
+
+    /* Walk from the search box up to the column, hiding everything alongside it. */
+    let node = search;
+    while (node && node !== col && node.parentElement) {
+      const parent = node.parentElement;
+      for (const sib of parent.children) {
+        if (sib === node) continue;
+        if (sib.contains(search)) continue;
+        sib.setAttribute('data-qx-hide', '1');
+      }
+      node.removeAttribute('data-qx-hide');
+      node = parent;
     }
   }
 
@@ -818,7 +855,7 @@
 
   if (globalThis.__QX_TEST__) {
     globalThis.__qx = {
-      decide, authorHandle, isReply, isRepost, isQuote, isPromoted, replyTargets, route, statusId, filterActive, markAds, markTopicModules, handleTabs, hasAdLabel, reposterHandle, allowReplyContext, entryFor,
+      decide, authorHandle, isReply, isRepost, isQuote, isPromoted, replyTargets, route, statusId, filterActive, markAds, markTopicModules, handleTabs, hasAdLabel, trimSidebar, reposterHandle, allowReplyContext, entryFor,
       setS: (s, own) => { S = s; ownHandle = own || null; }
     };
   } else {

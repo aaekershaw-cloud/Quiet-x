@@ -8,6 +8,7 @@
     /* where filtering applies */
     scope: 'home',            // 'home' | 'everywhere'
     filterStatusPages: false, // filter replies under a post you opened (off: show the whole thread)
+    filterSearch: false,      // filter search results (off: searching shows what you searched for)
     allowOwnPosts: true,
 
     /* allowlist: { handle(lowercase): {name, replies, reposts, added} } */

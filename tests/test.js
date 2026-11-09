@@ -168,6 +168,53 @@ check('new accounts show reposts by default', globalThis.QX.DEFAULTS.defaultRepo
 check('mirror mode on by default', globalThis.QX.DEFAULTS.mirrorFollowing, true);
 qx.setS(S, 'me');
 
+console.log('search');
+const go = p => dom.window.history.pushState({}, '', p);
+go('/search?q=from%3Agood%20markets');
+check('search page detected', qx.route().isSearch, true);
+qx.setS(Object.assign({}, globalThis.QX.DEFAULTS, { allowlist: S.allowlist }), 'me');
+check('default: search results not filtered', qx.filterActive(), false);
+qx.setS(Object.assign({}, globalThis.QX.DEFAULTS, { allowlist: S.allowlist, scope: 'everywhere' }), 'me');
+check('not filtered even in everywhere scope', qx.filterActive(), false);
+qx.setS(Object.assign({}, globalThis.QX.DEFAULTS, { allowlist: S.allowlist, filterSearch: true }), 'me');
+check('filtered when you opt in', qx.filterActive(), true);
+
+console.log('sidebar keeps the search box');
+const sideWrap = document.createElement('div');
+sideWrap.setAttribute('data-testid', 'sidebarColumn');
+sideWrap.innerHTML =
+  '<div id="sbinner">' +
+  '  <div id="searchwrap"><form role="search"><input data-testid="SearchBox_Search_Input"></form></div>' +
+  '  <section id="trends">Trends</section>' +
+  '  <aside id="wtf" aria-label="Who to follow">Who to follow</aside>' +
+  '  <nav id="footer">Terms</nav>' +
+  '</div>';
+document.body.appendChild(sideWrap);
+qx.setS(Object.assign({}, globalThis.QX.DEFAULTS, { allowlist: S.allowlist, hideSidebar: true }), 'me');
+qx.trimSidebar();
+check('column itself not blanket-hidden', sideWrap.getAttribute('data-qx-sidebar-mode'), 'keep-search');
+check('search wrapper kept', document.getElementById('searchwrap').getAttribute('data-qx-hide'), null);
+check('search input still reachable', !!sideWrap.querySelector('[data-testid="SearchBox_Search_Input"]'), true);
+check('trends hidden', document.getElementById('trends').getAttribute('data-qx-hide'), '1');
+check('who-to-follow hidden', document.getElementById('wtf').getAttribute('data-qx-hide'), '1');
+check('footer hidden', document.getElementById('footer').getAttribute('data-qx-hide'), '1');
+
+// a sidebar with no search box can still go entirely
+const bare = document.createElement('div');
+bare.setAttribute('data-testid', 'sidebarColumn');
+bare.innerHTML = '<section>Trends only</section>';
+document.body.appendChild(bare);
+sideWrap.remove();
+qx.trimSidebar();
+check('sidebar without search hidden wholesale', bare.getAttribute('data-qx-sidebar-mode'), 'all');
+// and with the option off, nothing is marked
+qx.setS(Object.assign({}, globalThis.QX.DEFAULTS, { allowlist: S.allowlist, hideSidebar: false }), 'me');
+qx.trimSidebar();
+check('option off: no mode set', bare.getAttribute('data-qx-sidebar-mode'), null);
+bare.remove();
+go('/home');
+qx.setS(S, 'me');
+
 console.log('leak regressions');
 // a stranger's post that merely mentions an allowed account must stay hidden
 const mention = post({ handle: 'randomguy', text: 'hey <a href="/good">@good</a> look at this' });

@@ -64,7 +64,10 @@ html[data-qx-badges="1"] [data-testid="AppTabBar_Notifications_Link"] div[dir] >
 html[data-qx-badges="1"] [aria-label*="unread"] > div > div > span,
 html[data-qx-badges="1"] [data-testid="AppTabBar_DirectMessage_Link"] div[dir] > span { display: none !important; }
 
-html[data-qx-sidebar="1"] [data-testid="sidebarColumn"] { display: none !important; }
+/* The search box lives inside the right sidebar, so hiding the column outright
+   takes search with it. Hide the sidebar's other modules and keep search. */
+html[data-qx-sidebar="1"] [data-testid="sidebarColumn"][data-qx-sidebar-mode="all"] { display: none !important; }
+html[data-qx-sidebar="1"] [data-testid="sidebarColumn"] [data-qx-hide="1"] { display: none !important; }
 html[data-qx-sidebar="1"] [data-testid="primaryColumn"] { border-right: 0 !important; }
 
 html[data-qx-wtf="1"] aside[aria-label] { display: none !important; }
