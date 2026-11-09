@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Quiet X settings</title>
+<link rel="stylesheet" href="ui.css">
+</head>
+<body>
+<div class="wrap">
+  <h1>Quiet X</h1>
+  <p class="sub">Nothing reaches your timeline unless the account is on the allowlist.</p>
+
+  <div class="panel">
+    <div class="row">
+      <div class="label"><b>Filtering on</b><span>Master switch. Off means X behaves normally.</span></div>
+      <input type="checkbox" data-setting="enabled">
+    </div>
+    <div class="row">
+      <div class="label"><b>Where it applies</b><span>Profile pages are never filtered, so you can always go look at an account.</span></div>
+      <select data-setting="scope">
+        <option value="home">Home timeline only</option>
+        <option value="everywhere">Home, search, explore, notifications</option>
+      </select>
+    </div>
+    <div class="row">
+      <div class="label"><b>Also filter replies under a post I open</b><span>Off (recommended): clicking a post shows the whole conversation, whoever replied. On: replies are filtered to your allowlist too, keeping the post you clicked.</span></div>
+      <input type="checkbox" data-setting="filterStatusPages">
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Allowed accounts <span class="pill" id="count">0</span></h2>
+    <div class="tools">
+      <button class="btn" id="import">Import everyone I follow</button>
+      <button class="btn ghost" id="repliesAll">Replies: all on</button>
+      <button class="btn ghost" id="repliesNone">Replies: all off</button>
+      <button class="btn danger" id="clear">Remove all</button>
+    </div>
+    <div class="tools">
+      <input type="text" id="add" placeholder="Add a handle, e.g. @naval (comma-separated works)">
+      <button class="btn ghost" id="addBtn">Add</button>
+      <input type="text" id="search" placeholder="Filter this list">
+    </div>
+    <div class="row">
+      <div class="label"><b>Defaults for newly added accounts</b><span>Applies to imports and quick-adds.</span></div>
+      <div class="switchline">
+        <label class="switchline"><input type="checkbox" data-setting="defaultReplies"> replies</label>
+        <label class="switchline"><input type="checkbox" data-setting="defaultReposts"> reposts</label>
+      </div>
+    </div>
+    <table>
+      <thead><tr><th>Account</th><th>Name</th><th style="width:70px">Replies</th><th style="width:70px">Reposts</th><th style="width:40px"></th></tr></thead>
+      <tbody id="list"></tbody>
+    </table>
+  </div>
+
+  <div class="panel">
+    <h2>The feed itself</h2>
+    <div class="row"><div class="label"><b>Hide the “For you” tab</b><span>Removes the algorithmic tab from the timeline header.</span></div><input type="checkbox" data-setting="hideForYou"></div>
+    <div class="row"><div class="label"><b>Always switch to “Following”</b></div><input type="checkbox" data-setting="forceFollowing"></div>
+    <div class="row"><div class="label"><b>Hide ads and promoted content</b><span>Promoted posts, promoted trends, promoted accounts in suggestions — everywhere on X, not just the timeline.</span></div><input type="checkbox" data-setting="hidePromoted"></div>
+    <div class="row"><div class="label"><b>Hide followed topics and pinned lists at the top</b><span>Removes every tab in the timeline header except Following.</span></div><input type="checkbox" data-setting="hideTopicTabs"></div>
+    <div class="row"><div class="label"><b>Hide topic carousels in the feed</b><span>“Topics to follow”, “What’s happening” and similar rails.</span></div><input type="checkbox" data-setting="hideTopicModules"></div>
+    <div class="row"><div class="label"><b>Hide the header tab bar entirely</b><span>With For you hidden and Following forced, the bar does nothing. Off by default in case you use it.</span></div><input type="checkbox" data-setting="hideTimelineTabs"></div>
+    <div class="row"><div class="label"><b>Hide quote posts</b><span>Quote-dunking is most of the bad-feeling content.</span></div><input type="checkbox" data-setting="hideQuotePosts"></div>
+    <div class="row"><div class="label"><b>Show a thin line where a post was hidden</b><span>Lets you one-click allow an account you are missing. Off = fully invisible.</span></div><input type="checkbox" data-setting="showPlaceholders"></div>
+    <div class="row"><div class="label"><b>Always show my own posts</b></div><input type="checkbox" data-setting="allowOwnPosts"></div>
+  </div>
+
+  <div class="panel">
+    <h2>Visual noise</h2>
+    <div class="row">
+      <div class="label"><b>Images and video</b><span>Blur reveals on hover or click.</span></div>
+      <select data-setting="mediaMode">
+        <option value="off">Show</option>
+        <option value="blur">Blur until hovered</option>
+        <option value="hide">Hide completely</option>
+      </select>
+    </div>
+    <div class="row"><div class="label"><b>Hide avatars</b></div><input type="checkbox" data-setting="hideAvatars"></div>
+    <div class="row"><div class="label"><b>Hide like / repost / view counts</b><span>Removes the popularity signal that drives most doom-reading.</span></div><input type="checkbox" data-setting="hideMetrics"></div>
+    <div class="row"><div class="label"><b>Hide verified badges</b></div><input type="checkbox" data-setting="hideVerifiedBadges"></div>
+    <div class="row"><div class="label"><b>Hide the right sidebar</b><span>Trends, search suggestions, premium pitches.</span></div><input type="checkbox" data-setting="hideSidebar"></div>
+    <div class="row"><div class="label"><b>Hide “Who to follow”</b></div><input type="checkbox" data-setting="hideWhoToFollow"></div>
+    <div class="row"><div class="label"><b>Hide premium upsells</b></div><input type="checkbox" data-setting="hidePremiumUpsell"></div>
+    <div class="row"><div class="label"><b>Hide Spaces / live pills</b></div><input type="checkbox" data-setting="hideLiveSpaces"></div>
+    <div class="row"><div class="label"><b>Hide unread badges</b><span>No red dots to chase.</span></div><input type="checkbox" data-setting="hideNotificationBadges"></div>
+    <div class="row"><div class="label"><b>Hide Explore in the nav</b></div><input type="checkbox" data-setting="hideExploreNav"></div>
+    <div class="row"><div class="label"><b>Hide Grok in the nav</b></div><input type="checkbox" data-setting="hideGrokNav"></div>
+    <div class="row"><div class="label"><b>Hide the message drawer</b></div><input type="checkbox" data-setting="hideMessagesDrawer"></div>
+    <div class="row"><div class="label"><b>Grayscale</b><span>Colour is half the pull.</span></div><input type="checkbox" data-setting="grayscale"></div>
+    <div class="row"><div class="label"><b>Minimal mode</b><span>Dims engagement buttons until you hover them.</span></div><input type="checkbox" data-setting="minimalMode"></div>
+  </div>
+
+  <div class="panel">
+    <h2>Muted words</h2>
+    <p class="sub" style="margin:0 0 10px">One per line. Hides any post containing the word, even from allowed accounts.</p>
+    <textarea data-setting="muteKeywords" placeholder="breaking&#10;thread 🧵&#10;giveaway"></textarea>
+  </div>
+
+  <div class="panel">
+    <h2>Attention budgets</h2>
+    <div class="row">
+      <div class="label"><b>Stop after N approved posts per session</b><span>The end of infinite scroll. Reload to start a new session.</span></div>
+      <div class="switchline"><input type="checkbox" data-setting="postBudgetEnabled"><input type="number" min="5" max="1000" data-setting="postBudget"></div>
+    </div>
+    <div class="row">
+      <div class="label"><b>Daily time budget (minutes)</b><span>Counts only time with an X tab focused.</span></div>
+      <div class="switchline"><input type="checkbox" data-setting="timeBudgetEnabled"><input type="number" min="1" max="600" data-setting="timeBudget"></div>
+    </div>
+    <div class="row">
+      <div class="label"><b>Pause before X opens (seconds)</b><span>Friction at the door kills most unintentional visits.</span></div>
+      <div class="switchline"><input type="checkbox" data-setting="gateEnabled"><input type="number" min="0" max="120" data-setting="gateSeconds"></div>
+    </div>
+    <div class="row"><div class="label"><b>Ask what I am here to do</b></div><input type="checkbox" data-setting="gateAskIntent"></div>
+    <div class="row">
+      <div class="label"><b>Override length (minutes)</b><span>How long a deliberate unlock lasts.</span></div>
+      <input type="number" min="1" max="120" data-setting="bypassMinutes">
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Your last two weeks</h2>
+    <div class="stat" id="stat"></div>
+    <div class="bars" id="bars"></div>
+    <div class="barlabels" id="barlabels"></div>
+  </div>
+
+  <div class="panel">
+    <h2>Backup</h2>
+    <div class="tools">
+      <button class="btn ghost" id="export">Export settings</button>
+      <button class="btn ghost" id="importFile">Import settings</button>
+      <button class="btn danger" id="reset">Reset everything</button>
+      <input type="file" id="file" accept="application/json" hidden>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Diagnostics</h2>
+    <p class="sub" style="margin:0 0 10px">If posts are still getting through: open your X timeline, come back here and run this. It reports what the filter is actually doing to the posts on screen.</p>
+    <div class="tools" style="margin:0 0 10px">
+      <button class="btn ghost" id="diag">Check the open timeline</button>
+      <button class="btn ghost" id="copyDiag" hidden>Copy report</button>
+    </div>
+    <textarea id="diagOut" readonly hidden style="min-height:150px;font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace"></textarea>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script src="../defaults.js"></script>
+<script src="options.js"></script>
+</body>
+</html>

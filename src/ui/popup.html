@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="ui.css">
+<style>
+  body { width: 316px; }
+  .wrap { padding: 16px 16px 18px; max-width: none; }
+  h1 { font-size: 16px; }
+  .panel { padding: 12px 14px; margin-bottom: 10px; }
+  .stat div b { font-size: 17px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Quiet X</h1>
+  <p class="sub" id="status" style="margin:2px 0 14px"></p>
+
+  <div class="panel">
+    <div class="row">
+      <div class="label"><b>Filtering</b></div>
+      <input type="checkbox" data-setting="enabled">
+    </div>
+    <div class="row">
+      <div class="label"><b>Media</b></div>
+      <select data-setting="mediaMode">
+        <option value="off">show</option>
+        <option value="blur">blur</option>
+        <option value="hide">hide</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="panel" id="acctPanel" hidden>
+    <div class="row" style="border:0">
+      <div class="label"><b id="acctHandle"></b><span id="acctState"></span></div>
+      <button class="btn ghost" id="acctBtn"></button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="stat" id="stat"></div>
+  </div>
+
+  <div class="tools" style="margin:0">
+    <button class="btn ghost" id="override">Override 5 min</button>
+    <button class="btn ghost" id="settings">Settings</button>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script src="../defaults.js"></script>
+<script src="popup.js"></script>
+</body>
+</html>
